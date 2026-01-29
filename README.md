@@ -7,7 +7,8 @@ PDF ↔ Markdown 양방향 변환 서비스의 FastAPI 백엔드입니다.
 - **PDF → Markdown**: [marker](https://github.com/VikParuchuri/marker) 라이브러리를 사용한 고품질 변환 (테이블, 이미지 지원)
 - **Markdown → PDF**: [Pandoc](https://pandoc.org/)을 사용한 깔끔한 PDF 생성 (한글 지원)
 - **비동기 처리**: FastAPI BackgroundTasks를 활용한 백그라운드 변환
-- **자동 정리**: 1시간 후 파일 자동 삭제
+- **S3 이미지 업로드**: PDF 변환 시 이미지를 S3에 업로드하여 노션 붙여넣기 지원 (선택)
+- **자동 정리**: 24시간 후 파일 자동 삭제
 
 ## 사용 제한
 
@@ -16,7 +17,7 @@ PDF ↔ Markdown 양방향 변환 서비스의 FastAPI 백엔드입니다.
 | 파일당 용량 | 최대 20MB |
 | 동시 파일 수 | 최대 20개 |
 | 총 용량 | 최대 100MB |
-| 파일 보관 | 1시간 |
+| 파일 보관 | 24시간 |
 
 ## 기술 스택
 
@@ -164,7 +165,8 @@ backend/
 │   │   │   └── md_to_pdf.py    # MD→PDF 변환기 (Pandoc)
 │   │   ├── converter_factory.py # 변환기 팩토리
 │   │   ├── task_manager.py     # 작업 상태 관리
-│   │   └── file_manager.py     # 파일 저장/삭제/ZIP
+│   │   ├── file_manager.py     # 파일 저장/삭제/ZIP
+│   │   └── s3_manager.py       # S3 이미지 업로드 (선택)
 │   │
 │   ├── models/
 │   │   ├── types.py            # 공용 타입 정의
@@ -179,7 +181,6 @@ backend/
 ├── tests/
 ├── main.py                     # FastAPI 앱 진입점
 ├── requirements.txt
-├── CLAUDE.md                   # Claude Code 설정
 └── .env.example
 ```
 
@@ -196,7 +197,11 @@ backend/
 | `MAX_TOTAL_SIZE_MB` | 최대 총 용량 | `100` |
 | `UPLOAD_DIR` | 업로드 디렉토리 | `./uploads` |
 | `OUTPUT_DIR` | 출력 디렉토리 | `./outputs` |
-| `FILE_RETENTION_HOURS` | 파일 보관 시간 | `1` |
+| `FILE_RETENTION_HOURS` | 파일 보관 시간 | `24` |
+| `AWS_ACCESS_KEY_ID` | AWS 액세스 키 (선택) | - |
+| `AWS_SECRET_ACCESS_KEY` | AWS 시크릿 키 (선택) | - |
+| `AWS_BUCKET_NAME` | S3 버킷 이름 (선택) | - |
+| `AWS_REGION` | AWS 리전 | `ap-northeast-2` |
 | `MARKER_USE_GPU` | marker GPU 사용 | `false` |
 | `PANDOC_PDF_ENGINE` | PDF 엔진 | `xelatex` |
 
@@ -319,7 +324,8 @@ docker run -p 8000:8000 pdfnmd-backend
 
 - **marker 모델**: 첫 실행 시 약 2GB 모델 다운로드 필요
 - **한글 PDF 생성**: XeLaTeX와 한글 폰트(NanumGothic 등) 필수
-- **파일 보관**: 1시간 후 자동 삭제 (설정 변경 가능)
+- **파일 보관**: 24시간 후 자동 삭제 (설정 변경 가능)
+- **S3 설정**: AWS 환경변수 설정 시 PDF 이미지가 S3에 업로드됨 (노션 붙여넣기 지원)
 - **동시성**: 싱글톤 패턴 및 스레드 안전 잠금 적용
 
 ## 라이선스

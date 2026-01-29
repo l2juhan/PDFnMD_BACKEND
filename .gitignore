@@ -56,3 +56,7 @@ outputs/*
 
 # marker 모델 캐시
 .cache/
+
+# Claude Code
+CLAUDE.md
+.claude/
