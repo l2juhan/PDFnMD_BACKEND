@@ -1,9 +1,14 @@
+import logging
+import re
 import threading
 from pathlib import Path
 from typing import Dict
 
+from app.core.config import settings
 from app.core.exceptions import ConversionFailedException
 from app.services.converters.base import BaseConverter
+
+logger = logging.getLogger(__name__)
 
 
 class PdfToMarkdownConverter(BaseConverter):
@@ -56,7 +61,9 @@ class PdfToMarkdownConverter(BaseConverter):
                         )
         return self._converter
 
-    def _convert_sync(self, input_path: Path, output_path: Path) -> None:
+    def _convert_sync(
+        self, input_path: Path, output_path: Path, task_id: str | None = None
+    ) -> None:
         """PDF를 Markdown으로 변환"""
         converter = self._get_converter()
 
@@ -69,35 +76,143 @@ class PdfToMarkdownConverter(BaseConverter):
             # 텍스트 및 이미지 추출
             text, _, images = text_from_rendered(rendered)
 
+            # 이미지 처리 (S3 업로드 또는 로컬 저장)
+            if images:
+                text = self._process_images(
+                    text, images, output_path.parent, output_path.stem, task_id
+                )
+
             # Markdown 저장
             output_path.write_text(text, encoding="utf-8")
-
-            # 이미지 저장 (있는 경우)
-            if images:
-                self._save_images(images, output_path.parent, output_path.stem)
 
         except ImportError:
             # text_from_rendered 없는 경우 직접 접근
             try:
                 rendered = converter(str(input_path))
                 markdown_content = rendered.markdown
+
+                # 이미지 처리 (있는 경우)
+                if hasattr(rendered, "images") and rendered.images:
+                    markdown_content = self._process_images(
+                        markdown_content,
+                        rendered.images,
+                        output_path.parent,
+                        output_path.stem,
+                        task_id,
+                    )
+
                 output_path.write_text(markdown_content, encoding="utf-8")
 
-                # 이미지 저장 (있는 경우)
-                if hasattr(rendered, "images") and rendered.images:
-                    self._save_images(
-                        rendered.images, output_path.parent, output_path.stem
-                    )
             except Exception as e:
                 raise ConversionFailedException(f"PDF 변환 실패: {str(e)}")
 
         except Exception as e:
             raise ConversionFailedException(f"PDF 변환 실패: {str(e)}")
 
+    def _process_images(
+        self,
+        markdown_text: str,
+        images: Dict[str, bytes],
+        output_dir: Path,
+        prefix: str,
+        task_id: str | None = None,
+    ) -> str:
+        """
+        이미지 처리: S3 업로드 또는 로컬 저장 후 URL 교체
+
+        Args:
+            markdown_text: 원본 마크다운 텍스트
+            images: {파일명: 이미지 데이터} 딕셔너리
+            output_dir: 출력 디렉토리
+            prefix: 파일명 프리픽스
+            task_id: 작업 ID (S3 업로드 시 사용)
+
+        Returns:
+            이미지 URL이 교체된 마크다운 텍스트
+        """
+        if not images:
+            return markdown_text
+
+        # S3가 활성화되어 있고 task_id가 있으면 S3에 업로드
+        if settings.is_s3_enabled and task_id:
+            return self._upload_images_to_s3(markdown_text, images, task_id)
+        else:
+            # 로컬에 이미지 저장
+            self._save_images(images, output_dir, prefix)
+            return markdown_text
+
+    def _upload_images_to_s3(
+        self,
+        markdown_text: str,
+        images: Dict[str, bytes],
+        task_id: str,
+    ) -> str:
+        """
+        이미지를 S3에 업로드하고 마크다운 내 URL 교체
+
+        Args:
+            markdown_text: 원본 마크다운 텍스트
+            images: {파일명: 이미지 데이터} 딕셔너리
+            task_id: 작업 ID
+
+        Returns:
+            S3 URL로 교체된 마크다운 텍스트
+        """
+        try:
+            from app.services.s3_manager import get_s3_manager
+
+            s3_manager = get_s3_manager()
+            url_mapping = s3_manager.upload_images(images, task_id)
+
+            if url_mapping:
+                markdown_text = self._replace_image_urls(markdown_text, url_mapping)
+                logger.info(f"S3 이미지 업로드 완료: task_id={task_id}, 파일 수={len(url_mapping)}")
+
+            return markdown_text
+
+        except Exception as e:
+            logger.error(f"S3 이미지 업로드 실패: {e}")
+            # S3 업로드 실패 시에도 변환은 계속 진행 (이미지 없이)
+            return markdown_text
+
+    def _replace_image_urls(
+        self,
+        markdown_text: str,
+        url_mapping: Dict[str, str],
+    ) -> str:
+        """
+        마크다운 텍스트 내 이미지 경로를 S3 URL로 교체
+
+        Args:
+            markdown_text: 원본 마크다운 텍스트
+            url_mapping: {원본 파일명: S3 URL} 딕셔너리
+
+        Returns:
+            URL이 교체된 마크다운 텍스트
+        """
+        for original_name, s3_url in url_mapping.items():
+            # marker가 생성하는 다양한 이미지 경로 패턴 처리
+            # 예: ![이미지](images/image_001.png), ![](./images/image_001.png)
+            patterns = [
+                # 정확한 파일명 매칭
+                rf"!\[([^\]]*)\]\([^)]*{re.escape(original_name)}\)",
+                # 경로 포함 매칭
+                rf"!\[([^\]]*)\]\([^)]*/{re.escape(original_name)}\)",
+            ]
+
+            for pattern in patterns:
+                markdown_text = re.sub(
+                    pattern,
+                    rf"![\1]({s3_url})",
+                    markdown_text,
+                )
+
+        return markdown_text
+
     def _save_images(
         self, images: Dict[str, bytes], output_dir: Path, prefix: str
     ) -> None:
-        """추출된 이미지 저장"""
+        """추출된 이미지를 로컬에 저장 (S3 미사용 시)"""
         images_dir = output_dir / f"{prefix}_images"
         images_dir.mkdir(parents=True, exist_ok=True)
 

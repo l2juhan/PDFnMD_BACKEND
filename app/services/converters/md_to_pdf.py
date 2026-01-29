@@ -52,7 +52,9 @@ class MarkdownToPdfConverter(BaseConverter):
 
         return args
 
-    def _convert_sync(self, input_path: Path, output_path: Path) -> None:
+    def _convert_sync(
+        self, input_path: Path, output_path: Path, task_id: str | None = None
+    ) -> None:
         """Markdown을 PDF로 변환"""
         try:
             import pypandoc

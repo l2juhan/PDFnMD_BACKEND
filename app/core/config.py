@@ -34,7 +34,13 @@ class Settings(BaseSettings):
     OUTPUT_DIR: Path = Path("./outputs")
 
     # 파일 보관 시간
-    FILE_RETENTION_HOURS: int = 1
+    FILE_RETENTION_HOURS: int = 24
+
+    # AWS S3 (이미지 업로드용)
+    AWS_ACCESS_KEY_ID: str | None = None
+    AWS_SECRET_ACCESS_KEY: str | None = None
+    AWS_BUCKET_NAME: str | None = None
+    AWS_REGION: str = "ap-northeast-2"
 
     # marker (PDF → MD)
     MARKER_USE_GPU: bool = False
@@ -70,6 +76,15 @@ class Settings(BaseSettings):
     def is_production(self) -> bool:
         """프로덕션 환경 여부"""
         return self.ENV == "production"
+
+    @property
+    def is_s3_enabled(self) -> bool:
+        """S3 활성화 여부"""
+        return all([
+            self.AWS_ACCESS_KEY_ID,
+            self.AWS_SECRET_ACCESS_KEY,
+            self.AWS_BUCKET_NAME,
+        ])
 
     def ensure_directories(self) -> None:
         """업로드/출력 디렉토리 생성"""

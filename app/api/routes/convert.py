@@ -42,6 +42,7 @@ async def _process_conversion(task_id: str) -> None:
         output_path = await converter.convert(
             input_path=task.input_path,
             output_dir=settings.OUTPUT_DIR,
+            task_id=task_id,
         )
 
         # 완료 처리

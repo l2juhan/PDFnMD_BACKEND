@@ -90,17 +90,22 @@ class BaseConverter(ABC):
         return output_dir / f"{safe_stem}{self.output_extension}"
 
     @abstractmethod
-    def _convert_sync(self, input_path: Path, output_path: Path) -> None:
+    def _convert_sync(
+        self, input_path: Path, output_path: Path, task_id: str | None = None
+    ) -> None:
         """동기 변환 실행 (서브클래스에서 구현)"""
         pass
 
-    async def convert(self, input_path: Path, output_dir: Path) -> Path:
+    async def convert(
+        self, input_path: Path, output_dir: Path, task_id: str | None = None
+    ) -> Path:
         """
         비동기 변환 실행
 
         Args:
             input_path: 입력 파일 경로
             output_dir: 출력 디렉토리 경로
+            task_id: 작업 ID (S3 업로드 등에 사용)
 
         Returns:
             출력 파일 경로
@@ -115,7 +120,7 @@ class BaseConverter(ABC):
             raise ConversionFailedException("잘못된 출력 경로입니다")
 
         try:
-            await asyncio.to_thread(self._convert_sync, input_path, output_path)
+            await asyncio.to_thread(self._convert_sync, input_path, output_path, task_id)
         except Exception as e:
             if isinstance(e, ConversionFailedException):
                 raise

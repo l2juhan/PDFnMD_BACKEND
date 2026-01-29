@@ -12,7 +12,7 @@
 - 파일 수: 최대 20개
 - 파일당 용량: 최대 20MB
 - 총 용량: 최대 100MB
-- 파일 보관: 1시간 후 자동 삭제
+- 파일 보관: 24시간 후 자동 삭제
 
 ## 기술 스택
 
@@ -52,6 +52,7 @@ backend/
 │   │   │   └── md_to_pdf.py      # MD→PDF (Pandoc)
 │   │   ├── converter_factory.py  # 변환기 팩토리
 │   │   ├── file_manager.py
+│   │   ├── s3_manager.py         # S3 이미지 업로드
 │   │   └── task_manager.py
 │   │
 │   ├── models/
@@ -76,12 +77,13 @@ backend/
 ## 핵심 기능
 
 ### MVP (1차)
-1. [ ] PDF → MD 변환 (marker)
-2. [ ] MD → PDF 변환 (Pandoc)
-3. [ ] 변환 모드 파라미터
-4. [ ] 작업 상태 관리
+1. [x] PDF → MD 변환 (marker)
+2. [x] MD → PDF 변환 (Pandoc)
+3. [x] 변환 모드 파라미터
+4. [x] 작업 상태 관리
 5. [ ] 단일/다중 파일 다운로드 (ZIP)
-6. [ ] 파일 자동 삭제 (1시간)
+6. [x] 파일 자동 삭제 (24시간)
+7. [x] PDF→MD 이미지 S3 업로드 (노션 붙여넣기 지원)
 
 ### 확장 (2차)
 1. [ ] Celery 비동기 처리
@@ -277,7 +279,13 @@ UPLOAD_DIR=./uploads
 OUTPUT_DIR=./outputs
 
 # 파일 보관 시간
-FILE_RETENTION_HOURS=1
+FILE_RETENTION_HOURS=24
+
+# AWS S3 (이미지 업로드용 - 선택사항)
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_BUCKET_NAME=
+AWS_REGION=ap-northeast-2
 
 # marker
 MARKER_USE_GPU=false
@@ -371,6 +379,9 @@ marker-pdf>=0.2.0
 
 # MD → PDF
 pypandoc>=1.12
+
+# AWS S3
+boto3>=1.34.0
 
 # 개발용
 black>=24.1.0
