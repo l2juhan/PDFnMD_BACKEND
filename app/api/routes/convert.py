@@ -1,5 +1,3 @@
-import logging
-
 from fastapi import APIRouter, BackgroundTasks, File, Form, UploadFile
 
 from app.core.config import settings
@@ -7,12 +5,9 @@ from app.core.exceptions import (
     ConversionFailedException,
     FileTooLargeException,
     InvalidFileTypeException,
-    TaskNotFoundException,
 )
 from app.models import ConversionMode, ConvertResponse
 from app.services import ConverterFactory, file_manager, task_manager
-
-logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -24,11 +19,7 @@ async def _process_conversion(task_id: str) -> None:
     Args:
         task_id: 작업 ID
     """
-    try:
-        task = task_manager.get_task(task_id)
-    except TaskNotFoundException:
-        logger.warning(f"변환 시작 실패: 작업을 찾을 수 없음 (task_id={task_id})")
-        return
+    task = task_manager.get_task(task_id)
 
     try:
         # 상태 업데이트: processing
@@ -42,7 +33,6 @@ async def _process_conversion(task_id: str) -> None:
         output_path = await converter.convert(
             input_path=task.input_path,
             output_dir=settings.OUTPUT_DIR,
-            task_id=task_id,
         )
 
         # 완료 처리
@@ -56,14 +46,7 @@ async def _process_conversion(task_id: str) -> None:
     except Exception as e:
         # 에러 처리
         error_msg = str(e) if str(e) else "변환 중 오류가 발생했습니다"
-        logger.error(f"변환 실패 (task_id={task_id}): {error_msg}")
-
-        try:
-            task_manager.update_task(task_id, error=error_msg)
-        except TaskNotFoundException:
-            logger.warning(
-                f"에러 상태 업데이트 실패: 작업이 이미 삭제됨 (task_id={task_id})"
-            )
+        task_manager.update_task(task_id, error=error_msg)
 
 
 @router.post("/convert", response_model=ConvertResponse)
