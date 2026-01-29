@@ -59,3 +59,4 @@ outputs/*
 
 # Claude Code
 CLAUDE.md
+.claude/
