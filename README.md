@@ -191,7 +191,7 @@ backend/
 | `ENV` | 실행 환경 | `development` |
 | `HOST` | 서버 호스트 | `0.0.0.0` |
 | `PORT` | 서버 포트 | `8000` |
-| `ALLOWED_ORIGINS` | CORS 허용 출처 | `http://localhost:5173` |
+| `ALLOWED_ORIGINS` | CORS 허용 출처 | `http://localhost:5174` |
 | `MAX_FILE_SIZE_MB` | 최대 파일 크기 | `20` |
 | `MAX_FILES` | 최대 파일 수 | `20` |
 | `MAX_TOTAL_SIZE_MB` | 최대 총 용량 | `100` |

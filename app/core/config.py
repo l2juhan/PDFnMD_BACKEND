@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     PORT: int = 8000
 
     # CORS
-    ALLOWED_ORIGINS: List[str] = ["http://localhost:5173"]
+    ALLOWED_ORIGINS: List[str] = ["http://localhost:5174"]
 
     # 파일 제한
     MAX_FILE_SIZE_MB: int = 20
