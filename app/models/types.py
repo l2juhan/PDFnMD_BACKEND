@@ -2,5 +2,5 @@
 
 from typing import Literal
 
-ConversionMode = Literal["pdf-to-md", "md-to-pdf"]
+ConversionMode = Literal["pdf-to-md"]
 TaskStatus = Literal["pending", "processing", "completed", "failed"]

@@ -3,7 +3,6 @@ from typing import Dict, Type
 
 from app.models import ConversionMode
 from app.services.converters.base import BaseConverter
-from app.services.converters.md_to_pdf import MarkdownToPdfConverter
 from app.services.converters.pdf_to_md import PdfToMarkdownConverter
 
 
@@ -12,7 +11,6 @@ class ConverterFactory:
 
     _converters: Dict[ConversionMode, Type[BaseConverter]] = {
         "pdf-to-md": PdfToMarkdownConverter,
-        "md-to-pdf": MarkdownToPdfConverter,
     }
 
     # 인스턴스 캐시 (싱글톤)
@@ -25,7 +23,7 @@ class ConverterFactory:
         변환 모드에 맞는 변환기 인스턴스 반환 (싱글톤)
 
         Args:
-            mode: 변환 모드 ('pdf-to-md' 또는 'md-to-pdf')
+            mode: 변환 모드 ('pdf-to-md')
 
         Returns:
             BaseConverter 인스턴스 (캐시됨)
