@@ -58,10 +58,9 @@ async def convert_file(
     """
     파일 변환 API
 
-    - **file**: 변환할 파일 (PDF 또는 Markdown)
+    - **file**: 변환할 PDF 파일
     - **mode**: 변환 모드
       - `pdf-to-md`: PDF → Markdown
-      - `md-to-pdf`: Markdown → PDF
 
     변환은 백그라운드에서 실행되며, 반환된 task_id로 상태를 조회할 수 있습니다.
     """
