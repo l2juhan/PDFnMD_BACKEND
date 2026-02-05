@@ -5,7 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.routes import convert, download, status
+from app.api.routes import content, convert, download, status
 from app.core.config import settings
 from app.core.exceptions import PDFnMDException
 from app.services import task_manager
@@ -121,3 +121,4 @@ async def health_check():
 app.include_router(convert.router, prefix="/api", tags=["convert"])
 app.include_router(status.router, prefix="/api", tags=["status"])
 app.include_router(download.router, prefix="/api", tags=["download"])
+app.include_router(content.router, prefix="/api", tags=["content"])
