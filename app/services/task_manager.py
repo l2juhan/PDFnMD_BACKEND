@@ -27,30 +27,10 @@ class Task:
     completed_at: Optional[datetime] = None
 
     @property
-    def download_url(self) -> Optional[str]:
-        """다운로드 URL 생성"""
-        if self.status == "completed" and self.output_path:
-            return f"/api/download/{self.task_id}"
-        return None
-
-    @property
     def is_expired(self) -> bool:
         """만료 여부 확인"""
         expiry_time = self.created_at + timedelta(hours=settings.FILE_RETENTION_HOURS)
         return datetime.now() > expiry_time
-
-    def to_dict(self) -> dict:
-        """딕셔너리 변환 (API 응답용)"""
-        return {
-            "task_id": self.task_id,
-            "mode": self.mode,
-            "status": self.status,
-            "progress": self.progress,
-            "download_url": self.download_url,
-            "error": self.error,
-            "filename": self.original_filename,
-        }
-
 
 class TaskManager:
     """

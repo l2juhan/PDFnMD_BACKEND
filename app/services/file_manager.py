@@ -2,9 +2,7 @@ import asyncio
 import re
 import shutil
 import uuid
-import zipfile
 from datetime import datetime, timedelta
-from io import BytesIO
 from pathlib import Path
 from typing import BinaryIO, List, Optional, Tuple
 
@@ -20,7 +18,6 @@ class FileManager:
 
     - 파일 업로드 저장
     - 파일 삭제 및 정리
-    - ZIP 압축
     """
 
     # 파일명 최대 길이
@@ -247,84 +244,6 @@ class FileManager:
                     continue
 
         return deleted_count
-
-    def _add_images_to_zip(
-        self, zf: zipfile.ZipFile, images_dir: Path, prefix: str
-    ) -> None:
-        """
-        이미지 디렉토리의 파일들을 ZIP에 추가 (재귀적)
-
-        Args:
-            zf: ZipFile 객체
-            images_dir: 이미지 디렉토리 경로
-            prefix: ZIP 내 경로 접두사
-        """
-        if not images_dir.exists() or not images_dir.is_dir():
-            return
-
-        for item in images_dir.iterdir():
-            if item.is_file():
-                # 파일인 경우 ZIP에 추가
-                zf.write(item, f"{prefix}/{item.name}")
-            elif item.is_dir():
-                # 하위 디렉토리인 경우 재귀 처리
-                self._add_images_to_zip(zf, item, f"{prefix}/{item.name}")
-
-    def create_zip(
-        self,
-        files: List[Path],
-        zip_filename: Optional[str] = None,
-    ) -> Path:
-        """
-        여러 파일을 ZIP으로 압축
-
-        Args:
-            files: 압축할 파일 경로 리스트
-            zip_filename: ZIP 파일명 (None이면 자동 생성)
-
-        Returns:
-            ZIP 파일 경로
-        """
-        if not zip_filename:
-            zip_filename = f"download_{uuid.uuid4().hex[:8]}.zip"
-
-        zip_path = self.output_dir / zip_filename
-
-        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-            for file_path in files:
-                if file_path.exists() and file_path.is_file():
-                    # ZIP 내부에는 파일명만 저장
-                    zf.write(file_path, file_path.name)
-
-                    # 관련 이미지 디렉토리도 포함 (PDF→MD 변환 결과)
-                    images_dir = file_path.parent / f"{file_path.stem}_images"
-                    self._add_images_to_zip(zf, images_dir, f"{file_path.stem}_images")
-
-        return zip_path
-
-    def create_zip_bytes(self, files: List[Path]) -> bytes:
-        """
-        여러 파일을 ZIP으로 압축하여 bytes로 반환 (메모리 내)
-
-        Args:
-            files: 압축할 파일 경로 리스트
-
-        Returns:
-            ZIP 파일 bytes
-        """
-        buffer = BytesIO()
-
-        with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
-            for file_path in files:
-                if file_path.exists() and file_path.is_file():
-                    zf.write(file_path, file_path.name)
-
-                    # 관련 이미지 디렉토리도 포함
-                    images_dir = file_path.parent / f"{file_path.stem}_images"
-                    self._add_images_to_zip(zf, images_dir, f"{file_path.stem}_images")
-
-        buffer.seek(0)
-        return buffer.read()
 
     def get_file_info(self, file_path: Path) -> Optional[dict]:
         """

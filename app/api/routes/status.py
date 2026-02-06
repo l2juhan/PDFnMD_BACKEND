@@ -16,7 +16,6 @@ async def get_task_status(task_id: str):
     반환값:
     - `status`: pending, processing, completed, failed
     - `progress`: 0-100 (진행률)
-    - `download_url`: 완료시 다운로드 URL
     - `error`: 실패시 에러 메시지
     """
     task = task_manager.get_task(task_id)
@@ -26,7 +25,6 @@ async def get_task_status(task_id: str):
         mode=task.mode,
         status=task.status,
         progress=task.progress,
-        download_url=task.download_url,
         error=task.error,
         filename=task.original_filename,
     )

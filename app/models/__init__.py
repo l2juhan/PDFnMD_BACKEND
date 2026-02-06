@@ -1,5 +1,4 @@
 from app.models.types import ConversionMode, TaskStatus
-from app.models.request import BatchDownloadRequest
 from app.models.response import (
     ContentResponse,
     ConvertResponse,
@@ -10,7 +9,6 @@ from app.models.response import (
 __all__ = [
     "ConversionMode",
     "TaskStatus",
-    "BatchDownloadRequest",
     "ContentResponse",
     "ConvertResponse",
     "StatusResponse",

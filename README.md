@@ -89,7 +89,6 @@ curl "http://localhost:8000/api/status/{task_id}"
   "mode": "pdf-to-md",
   "status": "completed",
   "progress": 100,
-  "download_url": "/api/download/550e8400-e29b-41d4-a716-446655440000",
   "error": null,
   "filename": "document.pdf"
 }
@@ -101,20 +100,21 @@ curl "http://localhost:8000/api/status/{task_id}"
 - `completed`: 완료
 - `failed`: 실패
 
-### GET /api/download/{task_id}
-변환된 파일 다운로드
+### GET /api/content/{task_id}
+변환된 마크다운 콘텐츠 조회 (클립보드 복사용)
 
 ```bash
-curl -O "http://localhost:8000/api/download/{task_id}"
+curl "http://localhost:8000/api/content/{task_id}"
 ```
 
-### POST /api/download/batch
-여러 파일 ZIP 다운로드
-
-```bash
-curl -X POST "http://localhost:8000/api/download/batch" \
-  -H "Content-Type: application/json" \
-  -d '{"task_ids": ["task_id_1", "task_id_2"]}'
+**응답:**
+```json
+{
+  "task_id": "550e8400-e29b-41d4-a716-446655440000",
+  "content": "# 문서 제목\n\n본문 내용...",
+  "format": "gfm",
+  "original_filename": "document.pdf"
+}
 ```
 
 ### GET /health
@@ -130,11 +130,10 @@ curl "http://localhost:8000/health"
 backend/
 ├── app/
 │   ├── api/
-│   │   ├── deps.py             # 의존성 주입
 │   │   └── routes/
 │   │       ├── convert.py      # 변환 API
 │   │       ├── status.py       # 상태 조회 API
-│   │       └── download.py     # 다운로드 API
+│   │       └── content.py      # 콘텐츠 조회 API (클립보드 복사용)
 │   │
 │   ├── core/
 │   │   ├── config.py           # 환경 설정
@@ -146,12 +145,11 @@ backend/
 │   │   │   └── pdf_to_md.py    # PDF→GFM 변환기 (marker)
 │   │   ├── converter_factory.py # 변환기 팩토리
 │   │   ├── task_manager.py     # 작업 상태 관리
-│   │   ├── file_manager.py     # 파일 저장/삭제/ZIP
+│   │   ├── file_manager.py     # 파일 저장/삭제
 │   │   └── s3_manager.py       # S3 이미지 업로드 (선택)
 │   │
 │   ├── models/
 │   │   ├── types.py            # 공용 타입 정의
-│   │   ├── request.py          # 요청 모델
 │   │   └── response.py         # 응답 모델
 │   │
 │   └── utils/

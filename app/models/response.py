@@ -19,7 +19,6 @@ class StatusResponse(BaseModel):
     mode: ConversionMode = Field(..., description="변환 모드")
     status: TaskStatus = Field(..., description="작업 상태")
     progress: int = Field(default=0, ge=0, le=100, description="진행률 (%)")
-    download_url: str | None = Field(default=None, description="다운로드 URL")
     error: str | None = Field(default=None, description="에러 메시지")
     filename: str | None = Field(default=None, description="원본 파일명")
 
