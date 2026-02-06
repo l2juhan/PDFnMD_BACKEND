@@ -1,4 +1,4 @@
-"""S3 파일 관리 서비스"""
+"""Cloudflare R2 파일 관리 서비스"""
 
 import logging
 from typing import List, Optional
@@ -11,25 +11,25 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 
-class S3Manager:
-    """AWS S3 파일 업로드/삭제 관리"""
+class R2Manager:
+    """Cloudflare R2 파일 업로드/삭제 관리 (S3 호환 API 사용)"""
 
     def __init__(self):
         self._client = None
 
     @property
     def client(self):
-        """S3 클라이언트 지연 로딩"""
+        """R2 클라이언트 지연 로딩"""
         if self._client is None:
-            if not settings.is_s3_enabled:
+            if not settings.is_r2_enabled:
                 raise RuntimeError(
-                    "S3가 설정되지 않았습니다. AWS 환경 변수를 확인하세요."
+                    "R2가 설정되지 않았습니다. R2 환경 변수를 확인하세요."
                 )
             self._client = boto3.client(
                 "s3",
-                aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-                region_name=settings.AWS_REGION,
+                aws_access_key_id=settings.R2_ACCESS_KEY_ID,
+                aws_secret_access_key=settings.R2_SECRET_ACCESS_KEY,
+                endpoint_url=settings.R2_ENDPOINT_URL,
             )
         return self._client
 
@@ -41,33 +41,33 @@ class S3Manager:
         content_type: str = "image/png",
     ) -> str:
         """
-        이미지를 S3에 업로드하고 퍼블릭 URL 반환
+        이미지를 R2에 업로드하고 퍼블릭 URL 반환
 
         Args:
             image_data: 이미지 바이트 데이터
-            task_id: 작업 ID (S3 경로에 사용)
+            task_id: 작업 ID (R2 경로에 사용)
             filename: 파일명
             content_type: MIME 타입
 
         Returns:
-            S3 퍼블릭 URL
+            R2 퍼블릭 URL
         """
-        s3_key = f"temp/{task_id}/{filename}"
+        r2_key = f"temp/{task_id}/{filename}"
 
         try:
             self.client.put_object(
-                Bucket=settings.AWS_BUCKET_NAME,
-                Key=s3_key,
+                Bucket=settings.R2_BUCKET_NAME,
+                Key=r2_key,
                 Body=image_data,
                 ContentType=content_type,
             )
 
-            url = f"https://{settings.AWS_BUCKET_NAME}.s3.{settings.AWS_REGION}.amazonaws.com/{s3_key}"
-            logger.info(f"S3 업로드 완료: {s3_key}")
+            url = f"{settings.R2_PUBLIC_URL}/{r2_key}"
+            logger.info(f"R2 업로드 완료: {r2_key}")
             return url
 
         except ClientError as e:
-            logger.error(f"S3 업로드 실패: {e}")
+            logger.error(f"R2 업로드 실패: {e}")
             raise
 
     def upload_images(
@@ -76,14 +76,14 @@ class S3Manager:
         task_id: str,
     ) -> dict:
         """
-        여러 이미지를 S3에 업로드하고 URL 매핑 반환
+        여러 이미지를 R2에 업로드하고 URL 매핑 반환
 
         Args:
             images: {파일명: 이미지 데이터} 딕셔너리
             task_id: 작업 ID
 
         Returns:
-            {원본 파일명: S3 URL} 딕셔너리
+            {원본 파일명: R2 URL} 딕셔너리
         """
         url_mapping = {}
 
@@ -139,7 +139,7 @@ class S3Manager:
             # 해당 prefix의 모든 객체 목록 조회
             paginator = self.client.get_paginator("list_objects_v2")
             pages = paginator.paginate(
-                Bucket=settings.AWS_BUCKET_NAME,
+                Bucket=settings.R2_BUCKET_NAME,
                 Prefix=prefix,
             )
 
@@ -150,19 +150,19 @@ class S3Manager:
                         objects_to_delete.append({"Key": obj["Key"]})
 
             if objects_to_delete:
-                # 최대 1000개씩 삭제 (S3 제한)
+                # 최대 1000개씩 삭제 (S3 API 제한)
                 for i in range(0, len(objects_to_delete), 1000):
                     batch = objects_to_delete[i : i + 1000]
                     self.client.delete_objects(
-                        Bucket=settings.AWS_BUCKET_NAME,
+                        Bucket=settings.R2_BUCKET_NAME,
                         Delete={"Objects": batch},
                     )
                     deleted_count += len(batch)
 
-            logger.info(f"S3 이미지 삭제 완료: task_id={task_id}, 삭제된 파일 수={deleted_count}")
+            logger.info(f"R2 이미지 삭제 완료: task_id={task_id}, 삭제된 파일 수={deleted_count}")
 
         except ClientError as e:
-            logger.error(f"S3 이미지 삭제 실패: {e}")
+            logger.error(f"R2 이미지 삭제 실패: {e}")
             raise
 
         return deleted_count
@@ -175,7 +175,7 @@ class S3Manager:
             task_id: 작업 ID
 
         Returns:
-            S3 URL 목록
+            R2 URL 목록
         """
         prefix = f"temp/{task_id}/"
         urls = []
@@ -183,30 +183,30 @@ class S3Manager:
         try:
             paginator = self.client.get_paginator("list_objects_v2")
             pages = paginator.paginate(
-                Bucket=settings.AWS_BUCKET_NAME,
+                Bucket=settings.R2_BUCKET_NAME,
                 Prefix=prefix,
             )
 
             for page in pages:
                 if "Contents" in page:
                     for obj in page["Contents"]:
-                        url = f"https://{settings.AWS_BUCKET_NAME}.s3.{settings.AWS_REGION}.amazonaws.com/{obj['Key']}"
+                        url = f"{settings.R2_PUBLIC_URL}/{obj['Key']}"
                         urls.append(url)
 
         except ClientError as e:
-            logger.error(f"S3 이미지 목록 조회 실패: {e}")
+            logger.error(f"R2 이미지 목록 조회 실패: {e}")
             raise
 
         return urls
 
 
 # 싱글톤 인스턴스
-_s3_manager: Optional[S3Manager] = None
+_r2_manager: Optional[R2Manager] = None
 
 
-def get_s3_manager() -> S3Manager:
-    """S3Manager 싱글톤 반환"""
-    global _s3_manager
-    if _s3_manager is None:
-        _s3_manager = S3Manager()
-    return _s3_manager
+def get_r2_manager() -> R2Manager:
+    """R2Manager 싱글톤 반환"""
+    global _r2_manager
+    if _r2_manager is None:
+        _r2_manager = R2Manager()
+    return _r2_manager
