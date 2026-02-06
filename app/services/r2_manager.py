@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class R2Manager:
-    """Cloudflare R2 파일 업로드/삭제 관리 (S3 호환 API 사용)"""
+    """Cloudflare R2 이미지 영구 저장 관리 (S3 호환 API 사용)"""
 
     CONTENT_TYPES = {
         "png": "image/png",
@@ -61,7 +61,7 @@ class R2Manager:
         Returns:
             R2 퍼블릭 URL
         """
-        r2_key = f"temp/{task_id}/{filename}"
+        r2_key = f"images/{task_id}/{filename}"
 
         try:
             self.client.put_object(
@@ -122,51 +122,6 @@ class R2Manager:
 
         return url_mapping
 
-    def delete_task_images(self, task_id: str) -> int:
-        """
-        특정 task의 모든 이미지 삭제
-
-        Args:
-            task_id: 작업 ID
-
-        Returns:
-            삭제된 파일 수
-        """
-        prefix = f"temp/{task_id}/"
-        deleted_count = 0
-
-        try:
-            # 해당 prefix의 모든 객체 목록 조회
-            paginator = self.client.get_paginator("list_objects_v2")
-            pages = paginator.paginate(
-                Bucket=settings.R2_BUCKET_NAME,
-                Prefix=prefix,
-            )
-
-            objects_to_delete = []
-            for page in pages:
-                if "Contents" in page:
-                    for obj in page["Contents"]:
-                        objects_to_delete.append({"Key": obj["Key"]})
-
-            if objects_to_delete:
-                # 최대 1000개씩 삭제 (S3 API 제한)
-                for i in range(0, len(objects_to_delete), 1000):
-                    batch = objects_to_delete[i : i + 1000]
-                    self.client.delete_objects(
-                        Bucket=settings.R2_BUCKET_NAME,
-                        Delete={"Objects": batch},
-                    )
-                    deleted_count += len(batch)
-
-            logger.info(f"R2 이미지 삭제 완료: task_id={task_id}, 삭제된 파일 수={deleted_count}")
-
-        except ClientError as e:
-            logger.error(f"R2 이미지 삭제 실패: {e}")
-            raise
-
-        return deleted_count
-
     def list_task_images(self, task_id: str) -> List[str]:
         """
         특정 task의 모든 이미지 URL 목록 반환
@@ -177,7 +132,7 @@ class R2Manager:
         Returns:
             R2 URL 목록
         """
-        prefix = f"temp/{task_id}/"
+        prefix = f"images/{task_id}/"
         urls = []
 
         try:
