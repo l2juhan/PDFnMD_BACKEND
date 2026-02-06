@@ -53,10 +53,10 @@ class TaskNotFoundException(PDFnMDException):
 
 
 class ConversionFailedException(PDFnMDException):
-    """변환 실패 예외"""
+    """변환 실패 예외 (클라이언트 요청 오류)"""
 
     def __init__(self, message: str = "파일 변환에 실패했습니다"):
         super().__init__(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail=message,
         )

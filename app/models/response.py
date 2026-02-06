@@ -28,3 +28,12 @@ class HealthResponse(BaseModel):
     """헬스 체크 응답"""
 
     status: str = Field(default="healthy", description="서버 상태")
+
+
+class ContentResponse(BaseModel):
+    """마크다운 콘텐츠 응답"""
+
+    task_id: str = Field(..., description="작업 ID")
+    content: str = Field(..., description="마크다운 텍스트 내용")
+    format: str = Field(default="gfm", description="마크다운 형식 (GitHub Flavored Markdown)")
+    original_filename: str = Field(..., description="원본 파일명")
