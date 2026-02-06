@@ -1,4 +1,4 @@
-"""Cloudflare R2 파일 관리 서비스"""
+"""Cloudflare R2 이미지 영구 저장 서비스"""
 
 import io
 import logging
