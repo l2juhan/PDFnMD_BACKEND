@@ -1,5 +1,6 @@
 """Cloudflare R2 파일 관리 서비스"""
 
+import io
 import logging
 from typing import List, Optional
 
@@ -13,6 +14,14 @@ logger = logging.getLogger(__name__)
 
 class R2Manager:
     """Cloudflare R2 파일 업로드/삭제 관리 (S3 호환 API 사용)"""
+
+    CONTENT_TYPES = {
+        "png": "image/png",
+        "jpg": "image/jpeg",
+        "jpeg": "image/jpeg",
+        "gif": "image/gif",
+        "webp": "image/webp",
+    }
 
     def __init__(self):
         self._client = None
@@ -93,8 +102,6 @@ class R2Manager:
                 data = image_data
             elif hasattr(image_data, "tobytes"):
                 # PIL Image 객체인 경우
-                import io
-
                 buffer = io.BytesIO()
                 image_data.save(buffer, format="PNG")
                 data = buffer.getvalue()
@@ -104,14 +111,7 @@ class R2Manager:
 
             # Content-Type 결정
             ext = filename.lower().split(".")[-1] if "." in filename else "png"
-            content_types = {
-                "png": "image/png",
-                "jpg": "image/jpeg",
-                "jpeg": "image/jpeg",
-                "gif": "image/gif",
-                "webp": "image/webp",
-            }
-            content_type = content_types.get(ext, "image/png")
+            content_type = self.CONTENT_TYPES.get(ext, "image/png")
 
             try:
                 url = self.upload_image(data, task_id, filename, content_type)
