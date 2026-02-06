@@ -2,8 +2,6 @@ from typing import List
 
 from pydantic import BaseModel, Field
 
-from app.models.types import ConversionMode
-
 
 class BatchDownloadRequest(BaseModel):
     """다중 파일 다운로드 요청"""
