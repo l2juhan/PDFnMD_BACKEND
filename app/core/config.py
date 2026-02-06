@@ -26,8 +26,6 @@ class Settings(BaseSettings):
 
     # 파일 제한
     MAX_FILE_SIZE_MB: int = 20
-    MAX_FILES: int = 20
-    MAX_TOTAL_SIZE_MB: int = 100
 
     # 경로
     UPLOAD_DIR: Path = Path("./uploads")
@@ -58,11 +56,6 @@ class Settings(BaseSettings):
     def MAX_FILE_SIZE_BYTES(self) -> int:
         """파일당 최대 크기 (bytes)"""
         return self.MAX_FILE_SIZE_MB * 1024 * 1024
-
-    @property
-    def MAX_TOTAL_SIZE_BYTES(self) -> int:
-        """총 최대 크기 (bytes)"""
-        return self.MAX_TOTAL_SIZE_MB * 1024 * 1024
 
     @property
     def is_development(self) -> bool:
