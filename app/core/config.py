@@ -45,10 +45,6 @@ class Settings(BaseSettings):
     # marker (PDF → MD)
     MARKER_USE_GPU: bool = False
 
-    # Pandoc (MD → PDF)
-    PANDOC_PDF_ENGINE: str = "xelatex"
-    PANDOC_FONT: str | None = None  # 한글 폰트 (예: NanumGothic)
-
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod
     def parse_cors_origins(cls, v):
