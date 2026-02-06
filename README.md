@@ -1,10 +1,10 @@
 # PDFnMD Backend
 
-PDF → Markdown 변환 서비스의 FastAPI 백엔드입니다.
+PDF → GFM(GitHub Flavored Markdown) 변환 서비스의 FastAPI 백엔드입니다.
 
 ## 주요 기능
 
-- **PDF → Markdown**: [marker](https://github.com/VikParuchuri/marker) 라이브러리를 사용한 고품질 변환 (테이블, 이미지 지원)
+- **PDF → GFM**: [marker](https://github.com/VikParuchuri/marker) 라이브러리를 사용한 고품질 변환 (테이블, 이미지 지원)
 - **비동기 처리**: FastAPI BackgroundTasks를 활용한 백그라운드 변환
 - **S3 이미지 업로드**: PDF 변환 시 이미지를 S3에 업로드하여 노션 붙여넣기 지원 (선택)
 - **자동 정리**: 24시간 후 파일 자동 삭제
@@ -21,7 +21,7 @@ PDF → Markdown 변환 서비스의 FastAPI 백엔드입니다.
 ## 기술 스택
 
 - **Framework**: FastAPI (Python 3.11+)
-- **PDF → MD**: marker-pdf
+- **PDF → GFM**: marker-pdf
 - **검증**: Pydantic v2
 - **ASGI 서버**: Uvicorn
 
@@ -59,7 +59,7 @@ API 문서: http://localhost:8000/docs
 파일 변환 시작
 
 ```bash
-# PDF → Markdown
+# PDF → GFM
 curl -X POST "http://localhost:8000/api/convert" \
   -F "file=@document.pdf" \
   -F "mode=pdf-to-md"
@@ -143,7 +143,7 @@ backend/
 │   ├── services/
 │   │   ├── converters/
 │   │   │   ├── base.py         # 추상 베이스 클래스
-│   │   │   └── pdf_to_md.py    # PDF→MD 변환기 (marker)
+│   │   │   └── pdf_to_md.py    # PDF→GFM 변환기 (marker)
 │   │   ├── converter_factory.py # 변환기 팩토리
 │   │   ├── task_manager.py     # 작업 상태 관리
 │   │   ├── file_manager.py     # 파일 저장/삭제/ZIP
