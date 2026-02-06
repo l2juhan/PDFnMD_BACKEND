@@ -29,7 +29,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="PDFnMD",
-    description="PDF ↔ Markdown 양방향 변환 서비스",
+    description="PDF → GFM 변환 서비스",
     version="0.1.0",
     lifespan=lifespan,
     # 프로덕션에서는 docs/openapi 비활성화
