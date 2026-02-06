@@ -22,16 +22,6 @@ class FileTooLargeException(PDFnMDException):
         )
 
 
-class TooManyFilesException(PDFnMDException):
-    """파일 개수 초과 예외"""
-
-    def __init__(self, max_files: int):
-        super().__init__(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"최대 {max_files}개 파일까지 업로드 가능합니다",
-        )
-
-
 class InvalidFileTypeException(PDFnMDException):
     """잘못된 파일 타입 예외"""
 

@@ -4,12 +4,12 @@ import shutil
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import BinaryIO, List, Optional, Tuple
+from typing import BinaryIO, Optional, Tuple
 
 import aiofiles
 
 from app.core.config import settings
-from app.core.exceptions import FileTooLargeException, TooManyFilesException
+from app.core.exceptions import FileTooLargeException
 
 
 class FileManager:
@@ -120,54 +120,6 @@ class FileManager:
                 raise FileTooLargeException(settings.MAX_FILE_SIZE_MB)
 
         return save_path, total_size
-
-    async def save_uploads_batch(
-        self,
-        files: List[Tuple[BinaryIO, str]],
-        max_files: Optional[int] = None,
-        max_total_size: Optional[int] = None,
-    ) -> List[Tuple[Path, int]]:
-        """
-        여러 파일 일괄 저장
-
-        Args:
-            files: [(file_object, filename), ...] 리스트
-            max_files: 최대 파일 수
-            max_total_size: 총 최대 크기
-
-        Returns:
-            [(저장 경로, 파일 크기), ...] 리스트
-        """
-        max_files = max_files or settings.MAX_FILES
-        max_total_size = max_total_size or settings.MAX_TOTAL_SIZE_BYTES
-
-        if len(files) > max_files:
-            raise TooManyFilesException(max_files)
-
-        results = []
-        total_size = 0
-        saved_paths = []
-
-        try:
-            for file_obj, filename in files:
-                path, size = await self.save_upload(file_obj, filename)
-                total_size += size
-
-                if total_size > max_total_size:
-                    # 총 크기 초과시 저장된 파일들 삭제
-                    path.unlink(missing_ok=True)
-                    raise FileTooLargeException(settings.MAX_TOTAL_SIZE_MB)
-
-                results.append((path, size))
-                saved_paths.append(path)
-
-        except Exception:
-            # 에러 발생시 저장된 파일들 정리
-            for path in saved_paths:
-                path.unlink(missing_ok=True)
-            raise
-
-        return results
 
     def delete_file(self, file_path: Path) -> bool:
         """
