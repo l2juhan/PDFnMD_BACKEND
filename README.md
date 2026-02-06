@@ -1,11 +1,10 @@
 # PDFnMD Backend
 
-PDF ↔ Markdown 양방향 변환 서비스의 FastAPI 백엔드입니다.
+PDF → GFM(GitHub Flavored Markdown) 변환 서비스의 FastAPI 백엔드입니다.
 
 ## 주요 기능
 
-- **PDF → Markdown**: [marker](https://github.com/VikParuchuri/marker) 라이브러리를 사용한 고품질 변환 (테이블, 이미지 지원)
-- **Markdown → PDF**: [Pandoc](https://pandoc.org/)을 사용한 깔끔한 PDF 생성 (한글 지원)
+- **PDF → GFM**: [marker](https://github.com/VikParuchuri/marker) 라이브러리를 사용한 고품질 변환 (테이블, 이미지 지원)
 - **비동기 처리**: FastAPI BackgroundTasks를 활용한 백그라운드 변환
 - **S3 이미지 업로드**: PDF 변환 시 이미지를 S3에 업로드하여 노션 붙여넣기 지원 (선택)
 - **자동 정리**: 24시간 후 파일 자동 삭제
@@ -22,25 +21,13 @@ PDF ↔ Markdown 양방향 변환 서비스의 FastAPI 백엔드입니다.
 ## 기술 스택
 
 - **Framework**: FastAPI (Python 3.11+)
-- **PDF → MD**: marker-pdf
-- **MD → PDF**: pypandoc + XeLaTeX
+- **PDF → GFM**: marker-pdf
 - **검증**: Pydantic v2
 - **ASGI 서버**: Uvicorn
 
 ## 빠른 시작
 
-### 1. 시스템 의존성 설치
-
-```bash
-# Ubuntu/Debian
-sudo apt install pandoc texlive-xetex fonts-nanum
-
-# macOS
-brew install pandoc
-brew install --cask mactex  # 또는 basictex
-```
-
-### 2. 프로젝트 설정
+### 1. 프로젝트 설정
 
 ```bash
 # 저장소 클론
@@ -58,7 +45,7 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-### 3. 서버 실행
+### 2. 서버 실행
 
 ```bash
 uvicorn main:app --reload
@@ -72,15 +59,10 @@ API 문서: http://localhost:8000/docs
 파일 변환 시작
 
 ```bash
-# PDF → Markdown
+# PDF → GFM
 curl -X POST "http://localhost:8000/api/convert" \
   -F "file=@document.pdf" \
   -F "mode=pdf-to-md"
-
-# Markdown → PDF
-curl -X POST "http://localhost:8000/api/convert" \
-  -F "file=@document.md" \
-  -F "mode=md-to-pdf"
 ```
 
 **응답:**
@@ -161,8 +143,7 @@ backend/
 │   ├── services/
 │   │   ├── converters/
 │   │   │   ├── base.py         # 추상 베이스 클래스
-│   │   │   ├── pdf_to_md.py    # PDF→MD 변환기 (marker)
-│   │   │   └── md_to_pdf.py    # MD→PDF 변환기 (Pandoc)
+│   │   │   └── pdf_to_md.py    # PDF→GFM 변환기 (marker)
 │   │   ├── converter_factory.py # 변환기 팩토리
 │   │   ├── task_manager.py     # 작업 상태 관리
 │   │   ├── file_manager.py     # 파일 저장/삭제/ZIP
@@ -203,7 +184,6 @@ backend/
 | `AWS_BUCKET_NAME` | S3 버킷 이름 (선택) | - |
 | `AWS_REGION` | AWS 리전 | `ap-northeast-2` |
 | `MARKER_USE_GPU` | marker GPU 사용 | `false` |
-| `PANDOC_PDF_ENGINE` | PDF 엔진 | `xelatex` |
 
 ## 아키텍처
 
@@ -241,7 +221,7 @@ task = task_manager.get_task(task_id)
 ## 보안 기능
 
 - **Path Traversal 방지**: 파일명 검증 및 경로 정규화 (uploads 디렉토리 제한)
-- **파일 시그니처 검증**: PDF 매직 바이트(`%PDF`) 및 텍스트 파일 검증
+- **파일 시그니처 검증**: PDF 매직 바이트(`%PDF`) 검증
 - **심볼릭 링크 검증**: 경로 탈출 방지를 위한 resolved 경로 확인
 - **보안 헤더**: X-Content-Type-Options, X-Frame-Options, X-XSS-Protection
 - **CORS 제한**: 허용된 출처만 접근 가능
@@ -296,7 +276,6 @@ class NewConverter(BaseConverter):
 ```python
 _converters: Dict[ConversionMode, Type[BaseConverter]] = {
     "pdf-to-md": PdfToMarkdownConverter,
-    "md-to-pdf": MarkdownToPdfConverter,
     "input-to-output": NewConverter,  # 추가
 }
 ```
@@ -323,7 +302,6 @@ docker run -p 8000:8000 pdfnmd-backend
 ## 주의사항
 
 - **marker 모델**: 첫 실행 시 약 2GB 모델 다운로드 필요
-- **한글 PDF 생성**: XeLaTeX와 한글 폰트(NanumGothic 등) 필수
 - **파일 보관**: 24시간 후 자동 삭제 (설정 변경 가능)
 - **S3 설정**: AWS 환경변수 설정 시 PDF 이미지가 S3에 업로드됨 (노션 붙여넣기 지원)
 - **동시성**: 싱글톤 패턴 및 스레드 안전 잠금 적용
