@@ -1,3 +1,3 @@
-from app.api.routes import convert, download, status
+from app.api.routes import content, convert, status
 
-__all__ = ["convert", "download", "status"]
+__all__ = ["content", "convert", "status"]
