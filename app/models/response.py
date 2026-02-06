@@ -36,3 +36,5 @@ class ContentResponse(BaseModel):
     content: str = Field(..., description="마크다운 텍스트 내용")
     format: str = Field(default="gfm", description="마크다운 형식 (GitHub Flavored Markdown)")
     original_filename: str = Field(..., description="원본 파일명")
+    size_bytes: int = Field(..., description="콘텐츠 크기 (바이트)")
+    size_kb: float = Field(..., description="콘텐츠 크기 (KB)")

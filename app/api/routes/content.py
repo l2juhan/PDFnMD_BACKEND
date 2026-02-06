@@ -40,9 +40,16 @@ async def get_content(task_id: str):
     # 파일 내용 읽기 (UTF-8)
     content = task.output_path.read_text(encoding="utf-8")
 
+    # 콘텐츠 크기 계산
+    content_bytes = content.encode("utf-8")
+    size_bytes = len(content_bytes)
+    size_kb = round(size_bytes / 1024, 2)
+
     return ContentResponse(
         task_id=task_id,
         content=content,
         format="gfm",
         original_filename=task.original_filename,
+        size_bytes=size_bytes,
+        size_kb=size_kb,
     )
