@@ -172,8 +172,6 @@ backend/
 | `PORT` | 서버 포트 | `8000` |
 | `ALLOWED_ORIGINS` | CORS 허용 출처 | `http://localhost:5174` |
 | `MAX_FILE_SIZE_MB` | 최대 파일 크기 | `20` |
-| `MAX_FILES` | 최대 파일 수 | `20` |
-| `MAX_TOTAL_SIZE_MB` | 최대 총 용량 | `100` |
 | `UPLOAD_DIR` | 업로드 디렉토리 | `./uploads` |
 | `OUTPUT_DIR` | 출력 디렉토리 | `./outputs` |
 | `FILE_RETENTION_HOURS` | 파일 보관 시간 | `24` |
