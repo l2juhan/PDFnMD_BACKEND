@@ -36,11 +36,12 @@ class Settings(BaseSettings):
     # 파일 보관 시간
     FILE_RETENTION_HOURS: int = 24
 
-    # AWS S3 (이미지 업로드용)
-    AWS_ACCESS_KEY_ID: str | None = None
-    AWS_SECRET_ACCESS_KEY: str | None = None
-    AWS_BUCKET_NAME: str | None = None
-    AWS_REGION: str = "ap-northeast-2"
+    # Cloudflare R2 (이미지 영구 저장)
+    R2_ACCESS_KEY_ID: str | None = None
+    R2_SECRET_ACCESS_KEY: str | None = None
+    R2_BUCKET_NAME: str | None = None
+    R2_ENDPOINT_URL: str | None = None  # 필수: https://<ACCOUNT_ID>.r2.cloudflarestorage.com
+    R2_PUBLIC_URL: str | None = None  # 퍼블릭 URL: https://pub-xxx.r2.dev
 
     # marker (PDF → MD)
     MARKER_USE_GPU: bool = False
@@ -74,12 +75,13 @@ class Settings(BaseSettings):
         return self.ENV == "production"
 
     @property
-    def is_s3_enabled(self) -> bool:
-        """S3 활성화 여부"""
+    def is_r2_enabled(self) -> bool:
+        """R2 활성화 여부 (4개 필수값 모두 필요)"""
         return all([
-            self.AWS_ACCESS_KEY_ID,
-            self.AWS_SECRET_ACCESS_KEY,
-            self.AWS_BUCKET_NAME,
+            self.R2_ACCESS_KEY_ID,
+            self.R2_SECRET_ACCESS_KEY,
+            self.R2_BUCKET_NAME,
+            self.R2_ENDPOINT_URL,
         ])
 
     def ensure_directories(self) -> None:

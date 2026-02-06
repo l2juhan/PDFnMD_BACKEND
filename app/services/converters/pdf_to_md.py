@@ -76,7 +76,7 @@ class PdfToMarkdownConverter(BaseConverter):
             # 텍스트 및 이미지 추출
             text, _, images = text_from_rendered(rendered)
 
-            # 이미지 처리 (S3 업로드 또는 로컬 저장)
+            # 이미지 처리 (R2 업로드 또는 로컬 저장)
             if images:
                 text = self._process_images(
                     text, images, output_path.parent, output_path.stem, task_id
@@ -118,14 +118,14 @@ class PdfToMarkdownConverter(BaseConverter):
         task_id: str | None = None,
     ) -> str:
         """
-        이미지 처리: S3 업로드 또는 로컬 저장 후 URL 교체
+        이미지 처리: R2 업로드 또는 로컬 저장 후 URL 교체
 
         Args:
             markdown_text: 원본 마크다운 텍스트
             images: {파일명: 이미지 데이터} 딕셔너리
             output_dir: 출력 디렉토리
             prefix: 파일명 프리픽스
-            task_id: 작업 ID (S3 업로드 시 사용)
+            task_id: 작업 ID (R2 업로드 시 사용)
 
         Returns:
             이미지 URL이 교체된 마크다운 텍스트
@@ -133,22 +133,22 @@ class PdfToMarkdownConverter(BaseConverter):
         if not images:
             return markdown_text
 
-        # S3가 활성화되어 있고 task_id가 있으면 S3에 업로드
-        if settings.is_s3_enabled and task_id:
-            return self._upload_images_to_s3(markdown_text, images, task_id)
+        # R2가 활성화되어 있고 task_id가 있으면 R2에 업로드
+        if settings.is_r2_enabled and task_id:
+            return self._upload_images_to_r2(markdown_text, images, task_id)
         else:
             # 로컬에 이미지 저장
             self._save_images(images, output_dir, prefix)
             return markdown_text
 
-    def _upload_images_to_s3(
+    def _upload_images_to_r2(
         self,
         markdown_text: str,
         images: Dict[str, bytes],
         task_id: str,
     ) -> str:
         """
-        이미지를 S3에 업로드하고 마크다운 내 URL 교체
+        이미지를 R2에 업로드하고 마크다운 내 URL 교체
 
         Args:
             markdown_text: 원본 마크다운 텍스트
@@ -156,23 +156,23 @@ class PdfToMarkdownConverter(BaseConverter):
             task_id: 작업 ID
 
         Returns:
-            S3 URL로 교체된 마크다운 텍스트
+            R2 URL로 교체된 마크다운 텍스트
         """
         try:
-            from app.services.s3_manager import get_s3_manager
+            from app.services.r2_manager import get_r2_manager
 
-            s3_manager = get_s3_manager()
-            url_mapping = s3_manager.upload_images(images, task_id)
+            r2_manager = get_r2_manager()
+            url_mapping = r2_manager.upload_images(images, task_id)
 
             if url_mapping:
                 markdown_text = self._replace_image_urls(markdown_text, url_mapping)
-                logger.info(f"S3 이미지 업로드 완료: task_id={task_id}, 파일 수={len(url_mapping)}")
+                logger.info(f"R2 이미지 업로드 완료: task_id={task_id}, 파일 수={len(url_mapping)}")
 
             return markdown_text
 
         except Exception as e:
-            logger.error(f"S3 이미지 업로드 실패: {e}")
-            # S3 업로드 실패 시에도 변환은 계속 진행 (이미지 없이)
+            logger.error(f"R2 이미지 업로드 실패: {e}")
+            # R2 업로드 실패 시에도 변환은 계속 진행 (이미지 없이)
             return markdown_text
 
     def _replace_image_urls(
@@ -181,16 +181,16 @@ class PdfToMarkdownConverter(BaseConverter):
         url_mapping: Dict[str, str],
     ) -> str:
         """
-        마크다운 텍스트 내 이미지 경로를 S3 URL로 교체
+        마크다운 텍스트 내 이미지 경로를 R2 URL로 교체
 
         Args:
             markdown_text: 원본 마크다운 텍스트
-            url_mapping: {원본 파일명: S3 URL} 딕셔너리
+            url_mapping: {원본 파일명: R2 URL} 딕셔너리
 
         Returns:
             URL이 교체된 마크다운 텍스트
         """
-        for original_name, s3_url in url_mapping.items():
+        for original_name, r2_url in url_mapping.items():
             # marker가 생성하는 다양한 이미지 경로 패턴 처리
             # 예: ![이미지](images/image_001.png), ![](./images/image_001.png)
             patterns = [
@@ -203,7 +203,7 @@ class PdfToMarkdownConverter(BaseConverter):
             for pattern in patterns:
                 markdown_text = re.sub(
                     pattern,
-                    rf"![\1]({s3_url})",
+                    rf"![\1]({r2_url})",
                     markdown_text,
                 )
 
@@ -212,7 +212,7 @@ class PdfToMarkdownConverter(BaseConverter):
     def _save_images(
         self, images: Dict[str, bytes], output_dir: Path, prefix: str
     ) -> None:
-        """추출된 이미지를 로컬에 저장 (S3 미사용 시)"""
+        """추출된 이미지를 로컬에 저장 (R2 미사용 시)"""
         images_dir = output_dir / f"{prefix}_images"
         images_dir.mkdir(parents=True, exist_ok=True)
 
