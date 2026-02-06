@@ -6,17 +6,16 @@ PDF → GFM(GitHub Flavored Markdown) 변환 서비스의 FastAPI 백엔드입�
 
 - **PDF → GFM**: [marker](https://github.com/VikParuchuri/marker) 라이브러리를 사용한 고품질 변환 (테이블, 이미지 지원)
 - **비동기 처리**: FastAPI BackgroundTasks를 활용한 백그라운드 변환
-- **S3 이미지 업로드**: PDF 변환 시 이미지를 S3에 업로드하여 노션 붙여넣기 지원 (선택)
-- **자동 정리**: 24시간 후 파일 자동 삭제
+- **R2 이미지 영구 저장**: PDF 변환 시 이미지를 Cloudflare R2에 영구 저장하여 노션 붙여넣기 지원
+- **자동 정리**: 로컬 파일(PDF, MD)은 24시간 후 자동 삭제, R2 이미지는 영구 보관
 
 ## 사용 제한
 
 | 항목 | 제한 |
 |------|------|
 | 파일당 용량 | 최대 20MB |
-| 동시 파일 수 | 최대 20개 |
-| 총 용량 | 최대 100MB |
-| 파일 보관 | 24시간 |
+| 동시 업로드 파일 수 | 1개 |
+| 파일 보관 | 24시간 (R2 이미지는 영구) |
 
 ## 기술 스택
 
@@ -146,7 +145,7 @@ backend/
 │   │   ├── converter_factory.py # 변환기 팩토리
 │   │   ├── task_manager.py     # 작업 상태 관리
 │   │   ├── file_manager.py     # 파일 저장/삭제
-│   │   └── s3_manager.py       # S3 이미지 업로드 (선택)
+│   │   └── r2_manager.py       # Cloudflare R2 이미지 영구 저장
 │   │
 │   ├── models/
 │   │   ├── types.py            # 공용 타입 정의
@@ -175,10 +174,11 @@ backend/
 | `UPLOAD_DIR` | 업로드 디렉토리 | `./uploads` |
 | `OUTPUT_DIR` | 출력 디렉토리 | `./outputs` |
 | `FILE_RETENTION_HOURS` | 파일 보관 시간 | `24` |
-| `AWS_ACCESS_KEY_ID` | AWS 액세스 키 (선택) | - |
-| `AWS_SECRET_ACCESS_KEY` | AWS 시크릿 키 (선택) | - |
-| `AWS_BUCKET_NAME` | S3 버킷 이름 (선택) | - |
-| `AWS_REGION` | AWS 리전 | `ap-northeast-2` |
+| `R2_ACCESS_KEY_ID` | Cloudflare R2 액세스 키 | - |
+| `R2_SECRET_ACCESS_KEY` | Cloudflare R2 시크릿 키 | - |
+| `R2_BUCKET_NAME` | R2 버킷 이름 | - |
+| `R2_ENDPOINT_URL` | R2 엔드포인트 URL | - |
+| `R2_PUBLIC_URL` | R2 퍼블릭 URL (이미지 접근용) | - |
 | `MARKER_USE_GPU` | marker GPU 사용 | `false` |
 
 ## 아키텍처
@@ -298,9 +298,10 @@ docker run -p 8000:8000 pdfnmd-backend
 ## 주의사항
 
 - **marker 모델**: 첫 실행 시 약 2GB 모델 다운로드 필요
-- **파일 보관**: 24시간 후 자동 삭제 (설정 변경 가능)
-- **S3 설정**: AWS 환경변수 설정 시 PDF 이미지가 S3에 업로드됨 (노션 붙여넣기 지원)
+- **파일 보관**: 로컬 파일은 24시간 후 자동 삭제, R2 이미지는 영구 보관
+- **R2 설정**: Cloudflare R2 환경변수 설정 시 PDF 이미지가 R2에 영구 저장됨 (노션 붙여넣기 지원)
 - **동시성**: 싱글톤 패턴 및 스레드 안전 잠금 적용
+- **단일 파일 업로드**: 한 번에 1개의 파일만 업로드 가능
 
 ## 라이선스
 
