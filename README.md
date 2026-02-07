@@ -303,6 +303,15 @@ docker run -p 8000:8000 pdfnmd-backend
 - **동시성**: 싱글톤 패턴 및 스레드 안전 잠금 적용
 - **단일 파일 업로드**: 한 번에 1개의 파일만 업로드 가능
 
-## 라이선스
+## Acknowledgements
 
-MIT License
+- [marker-pdf](https://github.com/datalab-to/marker) - PDF to markdown converter (GPL-3.0)
+- [FastAPI](https://github.com/tiangolo/fastapi) - Web framework
+- [Cloudflare R2](https://developers.cloudflare.com/r2/) - Image storage
+
+## License
+
+This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) file for details.
+
+This project uses [marker-pdf](https://github.com/datalab-to/marker) which is licensed under GPL-3.0.
+Model weights are licensed under AI Pubs Open Rail-M (free for research, personal use, and startups under $2M funding/revenue).
