@@ -1,0 +1,41 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /home/ubuntu/pdfnmd-backend
+
+            # 코드 업데이트
+            git fetch origin main
+            git reset --hard origin/main
+
+            # uv로 의존성 업데이트
+            source .venv/bin/activate
+            ~/.local/bin/uv pip install -e .
+
+            # 서비스 재시작
+            sudo systemctl restart pdfnmd
+
+            # 헬스 체크 (5초 대기 후)
+            sleep 5
+            curl -f http://localhost:8000/health || exit 1
+
+            echo "Deployment successful!"
