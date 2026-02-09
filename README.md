@@ -5,6 +5,7 @@ PDF → GFM(GitHub Flavored Markdown) 변환 서비스의 FastAPI 백엔드입�
 ## 주요 기능
 
 - **PDF → GFM**: [marker](https://github.com/VikParuchuri/marker) 라이브러리를 사용한 고품질 변환 (테이블, 이미지 지원)
+- **Modal 서버리스 GPU**: T4 GPU를 활용한 고속 변환 (~2분 → ~10초), 콜드 스타트 방지를 위한 스케줄 warm-up
 - **비동기 처리**: FastAPI BackgroundTasks를 활용한 백그라운드 변환
 - **R2 이미지 영구 저장**: PDF 변환 시 이미지를 Cloudflare R2에 영구 저장하여 노션 붙여넣기 지원
 - **자동 정리**: 로컬 파일(PDF, MD)은 24시간 후 자동 삭제, R2 이미지는 영구 보관
@@ -21,6 +22,8 @@ PDF → GFM(GitHub Flavored Markdown) 변환 서비스의 FastAPI 백엔드입�
 
 - **Framework**: FastAPI (Python 3.11+)
 - **PDF → GFM**: marker-pdf
+- **서버리스 GPU**: Modal (T4 GPU)
+- **패키지 관리**: uv
 - **검증**: Pydantic v2
 - **ASGI 서버**: Uvicorn
 
@@ -33,18 +36,31 @@ PDF → GFM(GitHub Flavored Markdown) 변환 서비스의 FastAPI 백엔드입�
 git clone <repository-url>
 cd backend
 
-# 가상환경 생성 및 활성화
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-
-# 의존성 설치
-pip install -r requirements.txt
+# 의존성 설치 (uv 사용)
+uv sync
 
 # 환경 변수 설정
 cp .env.example .env
 ```
 
-### 2. 서버 실행
+### 2. Modal GPU 설정 (선택사항)
+
+Modal을 사용하면 T4 GPU로 PDF 변환 속도를 크게 향상시킬 수 있습니다.
+
+```bash
+# 1. Modal 토큰 설정 (.env)
+MODAL_TOKEN_ID=ak-xxx
+MODAL_TOKEN_SECRET=as-xxx
+
+# 2. Modal 앱 배포
+modal deploy app/services/modal_converter.py
+
+# 3. .env에서 Modal 활성화
+USE_MODAL=true
+MODAL_APP_NAME=pdfnmd-converter
+```
+
+### 3. 서버 실행
 
 ```bash
 uvicorn main:app --reload
@@ -141,7 +157,8 @@ backend/
 │   ├── services/
 │   │   ├── converters/
 │   │   │   ├── base.py         # 추상 베이스 클래스
-│   │   │   └── pdf_to_md.py    # PDF→GFM 변환기 (marker)
+│   │   │   └── pdf_to_md.py    # PDF→GFM 변환기 (Modal/로컬 분기)
+│   │   ├── modal_converter.py  # Modal 서버리스 GPU 변환기
 │   │   ├── converter_factory.py # 변환기 팩토리
 │   │   ├── task_manager.py     # 작업 상태 관리
 │   │   ├── file_manager.py     # 파일 저장/삭제
@@ -179,7 +196,11 @@ backend/
 | `R2_BUCKET_NAME` | R2 버킷 이름 | - |
 | `R2_ENDPOINT_URL` | R2 엔드포인트 URL | - |
 | `R2_PUBLIC_URL` | R2 퍼블릭 URL (이미지 접근용) | - |
-| `MARKER_USE_GPU` | marker GPU 사용 | `false` |
+| `MARKER_USE_GPU` | marker GPU 사용 (로컬) | `false` |
+| `USE_MODAL` | Modal 서버리스 GPU 사용 | `false` |
+| `MODAL_TOKEN_ID` | Modal API 토큰 ID | - |
+| `MODAL_TOKEN_SECRET` | Modal API 토큰 시크릿 | - |
+| `MODAL_APP_NAME` | Modal 앱 이름 | `pdfnmd-converter` |
 
 ## 아키텍처
 
@@ -297,7 +318,8 @@ docker run -p 8000:8000 pdfnmd-backend
 
 ## 주의사항
 
-- **marker 모델**: 첫 실행 시 약 2GB 모델 다운로드 필요
+- **marker 모델**: 로컬 실행 시 첫 실행 시 약 2GB 모델 다운로드 필요
+- **Modal 사용 권장**: Modal GPU 사용 시 변환 속도 크게 향상 (~2분 → ~10초), warm-up으로 콜드 스타트 방지 (~$3/월)
 - **파일 보관**: 로컬 파일은 24시간 후 자동 삭제, R2 이미지는 영구 보관
 - **R2 설정**: Cloudflare R2 환경변수 설정 시 PDF 이미지가 R2에 영구 저장됨 (노션 붙여넣기 지원)
 - **동시성**: 싱글톤 패턴 및 스레드 안전 잠금 적용
@@ -306,6 +328,7 @@ docker run -p 8000:8000 pdfnmd-backend
 ## Acknowledgements
 
 - [marker-pdf](https://github.com/datalab-to/marker) - PDF to markdown converter (GPL-3.0)
+- [Modal](https://modal.com/) - Serverless GPU infrastructure
 - [FastAPI](https://github.com/tiangolo/fastapi) - Web framework
 - [Cloudflare R2](https://developers.cloudflare.com/r2/) - Image storage
 
