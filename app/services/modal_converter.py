@@ -50,6 +50,11 @@ class PdfConverterService:
         print("모델 로딩 완료!")
 
     @modal.method()
+    def ping(self) -> str:
+        """컨테이너 warm 상태 유지용 health check"""
+        return "pong"
+
+    @modal.method()
     def convert(self, pdf_bytes: bytes) -> dict:
         """
         PDF를 Markdown으로 변환 (모델 이미 로드됨)
@@ -108,16 +113,13 @@ class PdfConverterService:
             Path(pdf_path).unlink(missing_ok=True)
 
 
-# 기존 함수 인터페이스 유지 (하위 호환성)
-@app.function(image=image)
-def convert_pdf_with_modal(pdf_bytes: bytes) -> dict:
-    """
-    PDF를 Markdown으로 변환 (클래스 메서드 호출)
-
-    기존 코드와의 호환성을 위해 함수 인터페이스 유지
-    """
+# 15분마다 컨테이너 warm 상태 유지 (~$3/월)
+@app.function(schedule=modal.Period(minutes=15))
+def keep_warm():
+    """스케줄 warm-up: 15분마다 ping으로 컨테이너 유지"""
     service = PdfConverterService()
-    return service.convert.remote(pdf_bytes)
+    result = service.ping.remote()
+    print(f"Warm-up ping: {result}")
 
 
 # 로컬 테스트용 entrypoint
