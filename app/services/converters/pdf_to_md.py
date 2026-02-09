@@ -110,8 +110,8 @@ class PdfToMarkdownConverter(BaseConverter):
             logger.info(f"Modal GPU 변환 완료: {output_path.name}")
 
         except Exception as e:
-            logger.error(f"Modal 변환 실패: {e}")
-            raise ConversionFailedException(f"Modal PDF 변환 실패: {str(e)}")
+            logger.exception("Modal 변환 실패")
+            raise ConversionFailedException(f"Modal PDF 변환 실패: {e!s}") from e
 
     def _convert_local(
         self, input_path: Path, output_path: Path, task_id: str | None = None
@@ -143,7 +143,7 @@ class PdfToMarkdownConverter(BaseConverter):
             output_path.write_text(text, encoding="utf-8")
 
         except Exception as e:
-            raise ConversionFailedException(f"PDF 변환 실패: {str(e)}")
+            raise ConversionFailedException(f"PDF 변환 실패: {e!s}") from e
 
     def _process_images(
         self,
