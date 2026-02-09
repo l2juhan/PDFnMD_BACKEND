@@ -45,6 +45,11 @@ class Settings(BaseSettings):
     # marker (PDF → MD)
     MARKER_USE_GPU: bool = False
 
+    # Modal (서버리스 GPU)
+    USE_MODAL: bool = False
+    MODAL_APP_NAME: str = "pdfnmd-converter"
+    MODAL_FUNCTION_NAME: str = "convert_pdf_with_modal"
+
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod
     def parse_cors_origins(cls, v):

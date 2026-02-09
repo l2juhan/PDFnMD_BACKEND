@@ -64,7 +64,53 @@ class PdfToMarkdownConverter(BaseConverter):
     def _convert_sync(
         self, input_path: Path, output_path: Path, task_id: str | None = None
     ) -> None:
-        """PDF를 Markdown으로 변환"""
+        """PDF를 Markdown으로 변환 (Modal 또는 로컬)"""
+        if settings.USE_MODAL:
+            self._convert_with_modal(input_path, output_path, task_id)
+        else:
+            self._convert_local(input_path, output_path, task_id)
+
+    def _convert_with_modal(
+        self, input_path: Path, output_path: Path, task_id: str | None = None
+    ) -> None:
+        """Modal 서버리스 GPU를 사용하여 PDF 변환"""
+        try:
+            import modal
+
+            # Modal 함수 참조 가져오기
+            convert_fn = modal.Function.from_name(
+                settings.MODAL_APP_NAME,
+                settings.MODAL_FUNCTION_NAME,
+            )
+
+            # PDF 파일 읽기
+            pdf_bytes = input_path.read_bytes()
+
+            # Modal 함수 호출 (원격 GPU에서 실행)
+            logger.info(f"Modal GPU 변환 시작: {input_path.name}")
+            result = convert_fn.remote(pdf_bytes)
+
+            markdown_text = result["markdown"]
+            images = result["images"]
+
+            # 이미지 처리 (R2 업로드 또는 로컬 저장)
+            if images:
+                markdown_text = self._process_images(
+                    markdown_text, images, output_path.parent, output_path.stem, task_id
+                )
+
+            # Markdown 저장
+            output_path.write_text(markdown_text, encoding="utf-8")
+            logger.info(f"Modal GPU 변환 완료: {output_path.name}")
+
+        except Exception as e:
+            logger.error(f"Modal 변환 실패: {e}")
+            raise ConversionFailedException(f"Modal PDF 변환 실패: {str(e)}")
+
+    def _convert_local(
+        self, input_path: Path, output_path: Path, task_id: str | None = None
+    ) -> None:
+        """로컬 marker-pdf를 사용하여 PDF 변환"""
         converter = self._get_converter()
 
         try:
