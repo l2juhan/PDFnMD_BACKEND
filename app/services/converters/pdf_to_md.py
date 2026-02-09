@@ -64,17 +64,74 @@ class PdfToMarkdownConverter(BaseConverter):
     def _convert_sync(
         self, input_path: Path, output_path: Path, task_id: str | None = None
     ) -> None:
-        """PDF를 Markdown으로 변환"""
+        """PDF를 Markdown으로 변환 (Modal 또는 로컬)"""
+        if settings.USE_MODAL:
+            self._convert_with_modal(input_path, output_path, task_id)
+        else:
+            self._convert_local(input_path, output_path, task_id)
+
+    def _convert_with_modal(
+        self, input_path: Path, output_path: Path, task_id: str | None = None
+    ) -> None:
+        """Modal 서버리스 GPU를 사용하여 PDF 변환"""
+        # Modal 설정 검증
+        if not settings.MODAL_APP_NAME:
+            raise ConversionFailedException(
+                "Modal 설정이 없습니다. .env에 MODAL_APP_NAME을 설정하세요."
+            )
+
+        try:
+            import modal
+
+            # Modal 클래스 참조 가져오기
+            PdfConverterService = modal.Cls.from_name(
+                settings.MODAL_APP_NAME,
+                "PdfConverterService",
+            )
+
+            # PDF 파일 읽기
+            pdf_bytes = input_path.read_bytes()
+
+            # Modal 클래스 메서드 호출 (원격 GPU에서 실행)
+            logger.info(f"Modal GPU 변환 시작: {input_path.name}")
+            result = PdfConverterService().convert.remote(pdf_bytes)
+
+            markdown_text = result["markdown"]
+            images = result["images"]
+
+            # 이미지 처리 (R2 업로드 또는 로컬 저장)
+            if images:
+                markdown_text = self._process_images(
+                    markdown_text, images, output_path.parent, output_path.stem, task_id
+                )
+
+            # Markdown 저장
+            output_path.write_text(markdown_text, encoding="utf-8")
+            logger.info(f"Modal GPU 변환 완료: {output_path.name}")
+
+        except Exception as e:
+            logger.exception("Modal 변환 실패")
+            raise ConversionFailedException(f"Modal PDF 변환 실패: {e!s}") from e
+
+    def _convert_local(
+        self, input_path: Path, output_path: Path, task_id: str | None = None
+    ) -> None:
+        """로컬 marker-pdf를 사용하여 PDF 변환"""
         converter = self._get_converter()
 
         try:
-            from marker.output import text_from_rendered
-
-            # PDF 변환 실행
+            # PDF 변환 실행 (1회만 실행)
             rendered = converter(str(input_path))
 
             # 텍스트 및 이미지 추출
-            text, _, images = text_from_rendered(rendered)
+            try:
+                from marker.output import text_from_rendered
+
+                text, _, images = text_from_rendered(rendered)
+            except ImportError:
+                # text_from_rendered 없는 경우 직접 접근
+                text = rendered.markdown
+                images = getattr(rendered, "images", {}) or {}
 
             # 이미지 처리 (R2 업로드 또는 로컬 저장)
             if images:
@@ -85,29 +142,8 @@ class PdfToMarkdownConverter(BaseConverter):
             # Markdown 저장
             output_path.write_text(text, encoding="utf-8")
 
-        except ImportError:
-            # text_from_rendered 없는 경우 직접 접근
-            try:
-                rendered = converter(str(input_path))
-                markdown_content = rendered.markdown
-
-                # 이미지 처리 (있는 경우)
-                if hasattr(rendered, "images") and rendered.images:
-                    markdown_content = self._process_images(
-                        markdown_content,
-                        rendered.images,
-                        output_path.parent,
-                        output_path.stem,
-                        task_id,
-                    )
-
-                output_path.write_text(markdown_content, encoding="utf-8")
-
-            except Exception as e:
-                raise ConversionFailedException(f"PDF 변환 실패: {str(e)}")
-
         except Exception as e:
-            raise ConversionFailedException(f"PDF 변환 실패: {str(e)}")
+            raise ConversionFailedException(f"PDF 변환 실패: {e!s}") from e
 
     def _process_images(
         self,

@@ -45,6 +45,10 @@ class Settings(BaseSettings):
     # marker (PDF → MD)
     MARKER_USE_GPU: bool = False
 
+    # Modal (서버리스 GPU)
+    USE_MODAL: bool = False
+    MODAL_APP_NAME: str | None = None
+
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod
     def parse_cors_origins(cls, v):
