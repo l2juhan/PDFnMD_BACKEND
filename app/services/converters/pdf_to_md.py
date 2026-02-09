@@ -99,10 +99,6 @@ class PdfToMarkdownConverter(BaseConverter):
             markdown_text = result["markdown"]
             images = result["images"]
 
-            # 디버깅 로그
-            logger.info(f"Modal 반환 이미지 수: {len(images) if images else 0}")
-            logger.info(f"R2 활성화: {settings.is_r2_enabled}, task_id: {task_id}")
-
             # 이미지 처리 (R2 업로드 또는 로컬 저장)
             if images:
                 markdown_text = self._process_images(
@@ -124,13 +120,18 @@ class PdfToMarkdownConverter(BaseConverter):
         converter = self._get_converter()
 
         try:
-            from marker.output import text_from_rendered
-
-            # PDF 변환 실행
+            # PDF 변환 실행 (1회만 실행)
             rendered = converter(str(input_path))
 
             # 텍스트 및 이미지 추출
-            text, _, images = text_from_rendered(rendered)
+            try:
+                from marker.output import text_from_rendered
+
+                text, _, images = text_from_rendered(rendered)
+            except ImportError:
+                # text_from_rendered 없는 경우 직접 접근
+                text = rendered.markdown
+                images = getattr(rendered, "images", {}) or {}
 
             # 이미지 처리 (R2 업로드 또는 로컬 저장)
             if images:
@@ -140,27 +141,6 @@ class PdfToMarkdownConverter(BaseConverter):
 
             # Markdown 저장
             output_path.write_text(text, encoding="utf-8")
-
-        except ImportError:
-            # text_from_rendered 없는 경우 직접 접근
-            try:
-                rendered = converter(str(input_path))
-                markdown_content = rendered.markdown
-
-                # 이미지 처리 (있는 경우)
-                if hasattr(rendered, "images") and rendered.images:
-                    markdown_content = self._process_images(
-                        markdown_content,
-                        rendered.images,
-                        output_path.parent,
-                        output_path.stem,
-                        task_id,
-                    )
-
-                output_path.write_text(markdown_content, encoding="utf-8")
-
-            except Exception as e:
-                raise ConversionFailedException(f"PDF 변환 실패: {str(e)}")
 
         except Exception as e:
             raise ConversionFailedException(f"PDF 변환 실패: {str(e)}")

@@ -48,7 +48,6 @@ class Settings(BaseSettings):
     # Modal (서버리스 GPU)
     USE_MODAL: bool = False
     MODAL_APP_NAME: str | None = None
-    MODAL_FUNCTION_NAME: str | None = None
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod
