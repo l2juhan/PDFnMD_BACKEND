@@ -74,24 +74,34 @@ class PdfToMarkdownConverter(BaseConverter):
         self, input_path: Path, output_path: Path, task_id: str | None = None
     ) -> None:
         """Modal 서버리스 GPU를 사용하여 PDF 변환"""
+        # Modal 설정 검증
+        if not settings.MODAL_APP_NAME:
+            raise ConversionFailedException(
+                "Modal 설정이 없습니다. .env에 MODAL_APP_NAME을 설정하세요."
+            )
+
         try:
             import modal
 
-            # Modal 함수 참조 가져오기
-            convert_fn = modal.Function.from_name(
+            # Modal 클래스 참조 가져오기
+            PdfConverterService = modal.Cls.from_name(
                 settings.MODAL_APP_NAME,
-                settings.MODAL_FUNCTION_NAME,
+                "PdfConverterService",
             )
 
             # PDF 파일 읽기
             pdf_bytes = input_path.read_bytes()
 
-            # Modal 함수 호출 (원격 GPU에서 실행)
+            # Modal 클래스 메서드 호출 (원격 GPU에서 실행)
             logger.info(f"Modal GPU 변환 시작: {input_path.name}")
-            result = convert_fn.remote(pdf_bytes)
+            result = PdfConverterService().convert.remote(pdf_bytes)
 
             markdown_text = result["markdown"]
             images = result["images"]
+
+            # 디버깅 로그
+            logger.info(f"Modal 반환 이미지 수: {len(images) if images else 0}")
+            logger.info(f"R2 활성화: {settings.is_r2_enabled}, task_id: {task_id}")
 
             # 이미지 처리 (R2 업로드 또는 로컬 저장)
             if images:

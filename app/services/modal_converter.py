@@ -28,73 +28,96 @@ image = (
 )
 
 
-@app.function(
+@app.cls(
     image=image,
     gpu="T4",
     timeout=600,
     memory=8192,
+    scaledown_window=1200,  # 20분 동안 컨테이너 유지 (최대값)
 )
+class PdfConverterService:
+    """PDF 변환 서비스 (모델 캐싱으로 빠른 응답)"""
+
+    @modal.enter()
+    def load_model(self):
+        """컨테이너 시작 시 모델 로드 (1회만 실행)"""
+        from marker.converters.pdf import PdfConverter
+        from marker.models import create_model_dict
+
+        print("모델 로딩 시작...")
+        self.model_dict = create_model_dict()
+        self.converter = PdfConverter(artifact_dict=self.model_dict)
+        print("모델 로딩 완료!")
+
+    @modal.method()
+    def convert(self, pdf_bytes: bytes) -> dict:
+        """
+        PDF를 Markdown으로 변환 (모델 이미 로드됨)
+
+        Args:
+            pdf_bytes: PDF 파일 바이트 데이터
+
+        Returns:
+            dict: {
+                "markdown": str,  # 변환된 마크다운 텍스트
+                "images": dict[str, bytes],  # 추출된 이미지 {파일명: 바이트}
+            }
+        """
+        import tempfile
+        from pathlib import Path
+
+        # 임시 파일로 PDF 저장
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
+            f.write(pdf_bytes)
+            pdf_path = f.name
+
+        try:
+            # PDF 변환 실행 (모델은 이미 로드됨)
+            rendered = self.converter(pdf_path)
+
+            # 마크다운 텍스트 추출
+            try:
+                from marker.output import text_from_rendered
+
+                markdown_text, _, images = text_from_rendered(rendered)
+            except ImportError:
+                # text_from_rendered가 없는 경우 직접 접근
+                markdown_text = rendered.markdown
+                images = getattr(rendered, "images", {}) or {}
+
+            # 이미지를 bytes로 변환 (PIL Image인 경우)
+            images_bytes = {}
+            for img_name, img_data in images.items():
+                if isinstance(img_data, bytes):
+                    images_bytes[img_name] = img_data
+                elif hasattr(img_data, "save"):
+                    # PIL Image 객체인 경우
+                    import io
+
+                    buffer = io.BytesIO()
+                    img_data.save(buffer, format="PNG")
+                    images_bytes[img_name] = buffer.getvalue()
+
+            return {
+                "markdown": markdown_text,
+                "images": images_bytes,
+            }
+
+        finally:
+            # 임시 파일 삭제
+            Path(pdf_path).unlink(missing_ok=True)
+
+
+# 기존 함수 인터페이스 유지 (하위 호환성)
+@app.function(image=image)
 def convert_pdf_with_modal(pdf_bytes: bytes) -> dict:
     """
-    PDF를 Markdown으로 변환 (Modal GPU에서 실행)
+    PDF를 Markdown으로 변환 (클래스 메서드 호출)
 
-    Args:
-        pdf_bytes: PDF 파일 바이트 데이터
-
-    Returns:
-        dict: {
-            "markdown": str,  # 변환된 마크다운 텍스트
-            "images": dict[str, bytes],  # 추출된 이미지 {파일명: 바이트}
-        }
+    기존 코드와의 호환성을 위해 함수 인터페이스 유지
     """
-    import tempfile
-    from pathlib import Path
-
-    from marker.converters.pdf import PdfConverter
-    from marker.models import create_model_dict
-
-    # 임시 파일로 PDF 저장
-    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
-        f.write(pdf_bytes)
-        pdf_path = f.name
-
-    try:
-        # marker 모델 초기화 및 변환
-        model_dict = create_model_dict()
-        converter = PdfConverter(artifact_dict=model_dict)
-        rendered = converter(pdf_path)
-
-        # 마크다운 텍스트 추출
-        try:
-            from marker.output import text_from_rendered
-
-            markdown_text, _, images = text_from_rendered(rendered)
-        except ImportError:
-            # text_from_rendered가 없는 경우 직접 접근
-            markdown_text = rendered.markdown
-            images = getattr(rendered, "images", {}) or {}
-
-        # 이미지를 bytes로 변환 (PIL Image인 경우)
-        images_bytes = {}
-        for img_name, img_data in images.items():
-            if isinstance(img_data, bytes):
-                images_bytes[img_name] = img_data
-            elif hasattr(img_data, "save"):
-                # PIL Image 객체인 경우
-                import io
-
-                buffer = io.BytesIO()
-                img_data.save(buffer, format="PNG")
-                images_bytes[img_name] = buffer.getvalue()
-
-        return {
-            "markdown": markdown_text,
-            "images": images_bytes,
-        }
-
-    finally:
-        # 임시 파일 삭제
-        Path(pdf_path).unlink(missing_ok=True)
+    service = PdfConverterService()
+    return service.convert.remote(pdf_bytes)
 
 
 # 로컬 테스트용 entrypoint
@@ -118,10 +141,11 @@ def main(input_path: str):
     # PDF 파일 읽기
     pdf_bytes = pdf_path.read_bytes()
 
-    # Modal 함수 호출
-    result = convert_pdf_with_modal.remote(pdf_bytes)
+    # Modal 클래스 메서드 호출
+    service = PdfConverterService()
+    result = service.convert.remote(pdf_bytes)
 
-    print(f"변환 완료!")
+    print("변환 완료!")
     print(f"마크다운 길이: {len(result['markdown'])} 문자")
     print(f"이미지 수: {len(result['images'])}")
 
