@@ -17,7 +17,17 @@ import modal
 # Modal 앱 정의
 app = modal.App("pdfnmd-converter")
 
-# GPU 이미지 정의 (marker-pdf + 필요 라이브러리)
+# 모델 다운로드 함수 (이미지 빌드 시 실행)
+def download_models():
+    """이미지 빌드 시 모델을 미리 다운로드하여 cold start 시간 단축"""
+    from marker.models import create_model_dict
+
+    print("모델 다운로드 시작...")
+    create_model_dict()
+    print("모델 다운로드 완료!")
+
+
+# GPU 이미지 정의 (marker-pdf + 모델 포함)
 image = (
     modal.Image.debian_slim(python_version="3.11")
     .pip_install(
@@ -25,6 +35,7 @@ image = (
         "torch",
         "Pillow",
     )
+    .run_function(download_models)  # 이미지 빌드 시 모델 미리 다운로드
 )
 
 

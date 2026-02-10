@@ -5,7 +5,7 @@ PDF → GFM(GitHub Flavored Markdown) 변환 서비스의 FastAPI 백엔드입�
 ## 주요 기능
 
 - **PDF → GFM**: [marker](https://github.com/VikParuchuri/marker) 라이브러리를 사용한 고품질 변환 (테이블, 이미지 지원)
-- **Modal 서버리스 GPU**: T4 GPU를 활용한 고속 변환 (~2분 → ~10초), 콜드 스타트 방지를 위한 스케줄 warm-up
+- **Modal 서버리스 GPU**: T4 GPU를 활용한 고속 변환 (~2분 → ~10초), 이미지에 모델 포함으로 cold start 최소화 (~20초)
 - **비동기 처리**: FastAPI BackgroundTasks를 활용한 백그라운드 변환
 - **R2 이미지 영구 저장**: PDF 변환 시 이미지를 Cloudflare R2에 영구 저장하여 노션 붙여넣기 지원
 - **자동 정리**: 로컬 파일(PDF, MD)은 24시간 후 자동 삭제, R2 이미지는 영구 보관
@@ -319,7 +319,7 @@ docker run -p 8000:8000 pdfnmd-backend
 ## 주의사항
 
 - **marker 모델**: 로컬 실행 시 첫 실행 시 약 2GB 모델 다운로드 필요
-- **Modal 사용 권장**: Modal GPU 사용 시 변환 속도 크게 향상 (~2분 → ~10초), warm-up으로 콜드 스타트 방지 (~$3/월)
+- **Modal 사용 권장**: Modal GPU 사용 시 변환 속도 크게 향상 (~2분 → ~10초), 이미지에 모델 포함으로 cold start ~20초 (사용량 기반 과금)
 - **파일 보관**: 로컬 파일은 24시간 후 자동 삭제, R2 이미지는 영구 보관
 - **R2 설정**: Cloudflare R2 환경변수 설정 시 PDF 이미지가 R2에 영구 저장됨 (노션 붙여넣기 지원)
 - **동시성**: 싱글톤 패턴 및 스레드 안전 잠금 적용
