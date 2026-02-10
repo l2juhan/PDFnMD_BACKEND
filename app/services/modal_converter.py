@@ -33,7 +33,7 @@ image = (
     gpu="T4",
     timeout=600,
     memory=8192,
-    scaledown_window=1200,  # 20분 동안 컨테이너 유지 (최대값)
+    scaledown_window=1200,  # 마지막 요청 후 20분 동안 컨테이너 유지
 )
 class PdfConverterService:
     """PDF 변환 서비스 (모델 캐싱으로 빠른 응답)"""
@@ -111,15 +111,6 @@ class PdfConverterService:
         finally:
             # 임시 파일 삭제
             Path(pdf_path).unlink(missing_ok=True)
-
-
-# 15분마다 컨테이너 warm 상태 유지 (~$3/월)
-@app.function(schedule=modal.Period(minutes=15))
-def keep_warm():
-    """스케줄 warm-up: 15분마다 ping으로 컨테이너 유지"""
-    service = PdfConverterService()
-    result = service.ping.remote()
-    print(f"Warm-up ping: {result}")
 
 
 # 로컬 테스트용 entrypoint
